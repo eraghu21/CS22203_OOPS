@@ -45,14 +45,19 @@ if "name" not in st.session_state:
 # -----------------------
 
 students = pd.read_excel(STUDENT_FILE, dtype=str)
-students["regno"] = students["regno"].str.strip()
-students["name"] = students["name"].str.strip()
+
+students["regno"] = students["regno"].astype(str).str.replace(".0","").str.strip()
+students["name"] = students["name"].astype(str).str.strip()
+
+students = students.dropna()
 
 # -----------------------
 # LOAD QUIZ
 # -----------------------
 
 quiz = pd.read_excel(QUIZ_FILE)
+
+quiz.columns = quiz.columns.str.strip()
 
 # -----------------------
 # LOAD PROGRESS
@@ -72,11 +77,12 @@ def load_progress():
 progress = load_progress()
 
 def save_progress():
+
     with open(PROGRESS_FILE,"w") as f:
         json.dump(progress,f,indent=4)
 
 # -----------------------
-# CERTIFICATE FUNCTION
+# CERTIFICATE
 # -----------------------
 
 def generate_certificate(name, regno, score, total):
@@ -123,13 +129,13 @@ def generate_certificate(name, regno, score, total):
     return cert_path
 
 # -----------------------
-# TITLE
+# UI
 # -----------------------
 
 st.title("🎓 Microlearning Platform")
 
 # -----------------------
-# LOGIN PAGE
+# LOGIN
 # -----------------------
 
 if not st.session_state.logged_in:
@@ -165,10 +171,7 @@ if st.session_state.logged_in:
 
     st.success(f"Welcome {name}")
 
-    # -----------------------
-    # CHECK ALREADY COMPLETED
-    # -----------------------
-
+    # completed already
     if regno in progress:
 
         st.success("You already completed this module")
@@ -188,7 +191,7 @@ if st.session_state.logged_in:
         st.stop()
 
     # -----------------------
-    # VIDEO SECTION
+    # VIDEO
     # -----------------------
 
     if not st.session_state.video_done:
@@ -197,7 +200,7 @@ if st.session_state.logged_in:
 
         st.video(VIDEO_URL)
 
-        st_autorefresh(interval=1000, key="timer")
+        st_autorefresh(interval=1000,key="timer")
 
         elapsed = (datetime.now() - st.session_state.start_time).seconds
 
@@ -217,7 +220,7 @@ if st.session_state.logged_in:
                 st.rerun()
 
     # -----------------------
-    # QUIZ SECTION
+    # QUIZ
     # -----------------------
 
     if st.session_state.video_done:
@@ -229,25 +232,25 @@ if st.session_state.logged_in:
         for i,row in quiz.iterrows():
 
             options = [
-                row["OptionA"],
-                row["OptionB"],
-                row["OptionC"],
-                row["OptionD"]
+                row["Option A"],
+                row["Option B"],
+                row["Option C"],
+                row["Option D"]
             ]
 
-            answers[i] = st.radio(row["Question"], options, key=i)
+            answers[i] = st.radio(row["Question"],options,key=i)
 
         if st.button("Submit Quiz"):
 
             score = 0
-            total = quiz["Marks"].sum()
+            total = len(quiz)
 
             for i,row in quiz.iterrows():
 
-                correct = row[f"Option{row['Answer']}"]
+                correct = row[f"Option {row['Answer']}"]
 
                 if answers[i] == correct:
-                    score += row["Marks"]
+                    score += 1
 
             st.success(f"Your Score: {score}/{total}")
 
@@ -259,8 +262,6 @@ if st.session_state.logged_in:
             }
 
             save_progress()
-
-            st.success("Certificate Generated Successfully")
 
             with open(cert_path,"rb") as f:
 
