@@ -166,13 +166,32 @@ if st.button("Login"):
     # VIDEO
     # -----------------------
 
+   # -----------------------
+# VIDEO SECTION WITH TIMER
+# -----------------------
+
+if not st.session_state.video_done:
+
     st.subheader("Watch Learning Video")
 
     st.video(VIDEO_URL)
 
-    if st.button("I Completed Watching"):
+    # start timer
+    if "start_time" not in st.session_state:
+        st.session_state.start_time = datetime.now()
 
-        st.session_state.video_done = True
+    elapsed = (datetime.now() - st.session_state.start_time).seconds
+
+    remaining = 420 - elapsed   # 7 minutes
+
+    if remaining > 0:
+        st.warning(f"Please watch the video. Quiz unlocks in {remaining} seconds.")
+    else:
+        st.success("Video watch time completed")
+
+        if st.button("Proceed to Quiz"):
+            st.session_state.video_done = True
+            st.rerun()
 
 # -----------------------
 # QUIZ
