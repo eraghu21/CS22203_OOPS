@@ -44,20 +44,29 @@ if "name" not in st.session_state:
 # LOAD STUDENTS
 # -----------------------
 
-students = pd.read_excel(STUDENT_FILE, dtype=str)
+try:
+    students = pd.read_excel(STUDENT_FILE, dtype=str)
+    students.columns = students.columns.str.strip()
 
-students["regno"] = students["regno"].astype(str).str.replace(".0","").str.strip()
-students["name"] = students["name"].astype(str).str.strip()
+    students["regno"] = students["regno"].astype(str).str.replace(".0","").str.strip()
+    students["name"] = students["name"].astype(str).str.strip()
 
-students = students.dropna()
+    students = students.dropna()
+
+except:
+    st.error("Error loading students file")
+    st.stop()
 
 # -----------------------
 # LOAD QUIZ
 # -----------------------
 
-quiz = pd.read_excel(QUIZ_FILE)
-
-quiz.columns = quiz.columns.str.strip()
+try:
+    quiz = pd.read_excel(QUIZ_FILE)
+    quiz.columns = quiz.columns.str.strip()
+except:
+    st.error("Error loading quiz file")
+    st.stop()
 
 # -----------------------
 # LOAD PROGRESS
@@ -147,7 +156,6 @@ if not st.session_state.logged_in:
         student = students[students["regno"] == regno]
 
         if student.empty:
-
             st.error("Invalid Register Number")
 
         else:
@@ -171,7 +179,7 @@ if st.session_state.logged_in:
 
     st.success(f"Welcome {name}")
 
-    # completed already
+    # If already completed
     if regno in progress:
 
         st.success("You already completed this module")
@@ -247,7 +255,13 @@ if st.session_state.logged_in:
 
             for i,row in quiz.iterrows():
 
-                correct = row[f"Option {row['Answer']}"]
+                ans = str(row["Answer"]).strip().upper()
+
+                try:
+                    correct = row[f"Option {ans}"]
+                except:
+                    st.error(f"Quiz format error in row {i+1}")
+                    continue
 
                 if answers[i] == correct:
                     score += 1
