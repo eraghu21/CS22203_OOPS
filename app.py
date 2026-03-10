@@ -201,7 +201,7 @@ if st.session_state.logged_in:
 
         elapsed = (datetime.now() - st.session_state.start_time).seconds
 
-        remaining = 420 - elapsed
+        remaining = 90 - elapsed
 
         if remaining > 0:
 
