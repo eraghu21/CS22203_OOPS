@@ -4,6 +4,7 @@ import json
 import os
 import uuid
 import qrcode
+import time
 from fpdf import FPDF
 from datetime import datetime
 
@@ -194,31 +195,33 @@ if st.session_state.logged_in:
     # VIDEO SECTION
     # -----------------------
 
-    if not st.session_state.video_done:
+    
+if not st.session_state.video_done:
 
-        st.subheader("Watch Learning Video")
+    st.subheader("Watch Learning Video")
 
-        st.video(VIDEO_URL)
+    st.video(VIDEO_URL)
 
-        if st.session_state.start_time is None:
-            st.session_state.start_time = datetime.now()
+    if st.session_state.start_time is None:
+        st.session_state.start_time = datetime.now()
+
+    timer_placeholder = st.empty()
+
+    while True:
 
         elapsed = (datetime.now() - st.session_state.start_time).seconds
+        remaining = 42 - elapsed
 
-        remaining = 420 - elapsed
+        if remaining <= 0:
+            timer_placeholder.success("Video watch time completed")
+            break
 
-        if remaining > 0:
+        timer_placeholder.warning(f"Quiz unlocks in {remaining} seconds")
+        time.sleep(1)
 
-            st.warning(f"Quiz unlocks in {remaining} seconds")
-
-        else:
-
-            st.success("Video watch time completed")
-
-            if st.button("Proceed to Quiz"):
-
-                st.session_state.video_done = True
-                st.rerun()
+    if st.button("Proceed to Quiz"):
+        st.session_state.video_done = True
+        st.rerun()
 
     # -----------------------
     # QUIZ SECTION
