@@ -7,11 +7,11 @@ import qrcode
 from fpdf import FPDF
 from datetime import datetime
 
-# ----------------------------
-# CONFIGURATION
-# ----------------------------
+# -----------------------
+# CONFIG
+# -----------------------
 
-VIDEO_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+VIDEO_URL = "https://www.youtube.com/watch?v=YOUR_VIDEO_ID"
 
 STUDENT_FILE = "students.xlsx"
 QUIZ_FILE = "quiz.xlsx"
@@ -19,24 +19,26 @@ PROGRESS_FILE = "progress.json"
 
 CERT_FOLDER = "certificates"
 
-# Create certificates folder if not exists
 os.makedirs(CERT_FOLDER, exist_ok=True)
 
-# ----------------------------
+# -----------------------
 # LOAD STUDENTS
-# ----------------------------
+# -----------------------
 
-students = pd.read_excel(STUDENT_FILE)
+students = pd.read_excel(STUDENT_FILE, dtype=str)
 
-# ----------------------------
+students["regno"] = students["regno"].astype(str).str.strip()
+students["name"] = students["name"].astype(str).str.strip()
+
+# -----------------------
 # LOAD QUIZ
-# ----------------------------
+# -----------------------
 
 quiz = pd.read_excel(QUIZ_FILE)
 
-# ----------------------------
-# LOAD PROGRESS SAFELY
-# ----------------------------
+# -----------------------
+# LOAD PROGRESS SAFE
+# -----------------------
 
 def load_progress():
 
@@ -51,57 +53,64 @@ def load_progress():
 
 progress = load_progress()
 
-# ----------------------------
+# -----------------------
 # SAVE PROGRESS
-# ----------------------------
+# -----------------------
 
 def save_progress():
 
-    with open(PROGRESS_FILE, "w") as f:
-        json.dump(progress, f, indent=4)
+    with open(PROGRESS_FILE,"w") as f:
+        json.dump(progress,f,indent=4)
 
-# ----------------------------
+# -----------------------
 # CERTIFICATE GENERATOR
-# ----------------------------
+# -----------------------
 
 def generate_certificate(name, regno, score, total):
 
     cert_id = "ML-" + str(uuid.uuid4())[:8]
 
-    qr_text = f"Certificate ID: {cert_id}\nName: {name}\nMarks: {score}/{total}"
+    qr_text = f"Certificate ID: {cert_id}\nName:{name}\nMarks:{score}/{total}"
 
     qr = qrcode.make(qr_text)
 
     qr_path = f"{CERT_FOLDER}/{regno}_qr.png"
+
     qr.save(qr_path)
 
-    pdf = FPDF('L', 'mm', 'A4')
+    pdf = FPDF('L','mm','A4')
+
     pdf.add_page()
 
-    # certificate background
-    pdf.image("certificate_bg.png", 0, 0, 297, 210)
+    pdf.image("certificate_bg.png",0,0,297,210)
 
-    pdf.set_font("Arial", "B", 28)
-    pdf.set_xy(0, 90)
-    pdf.cell(297, 10, name, align="C")
+    pdf.set_font("Arial","B",28)
 
-    pdf.set_font("Arial", "", 16)
+    pdf.set_xy(0,90)
 
-    pdf.set_xy(0, 110)
-    pdf.cell(297, 10, f"Register Number: {regno}", align="C")
+    pdf.cell(297,10,name,align="C")
 
-    pdf.set_xy(0, 125)
-    pdf.cell(297, 10, f"Score: {score} / {total}", align="C")
+    pdf.set_font("Arial","",16)
 
-    pdf.set_xy(0, 140)
-    pdf.cell(297, 10, f"Certificate ID: {cert_id}", align="C")
+    pdf.set_xy(0,110)
+
+    pdf.cell(297,10,f"Register Number: {regno}",align="C")
+
+    pdf.set_xy(0,125)
+
+    pdf.cell(297,10,f"Score: {score} / {total}",align="C")
+
+    pdf.set_xy(0,140)
+
+    pdf.cell(297,10,f"Certificate ID: {cert_id}",align="C")
 
     date = datetime.today().strftime("%d-%m-%Y")
 
-    pdf.set_xy(0, 155)
-    pdf.cell(297, 10, f"Date: {date}", align="C")
+    pdf.set_xy(0,155)
 
-    pdf.image(qr_path, 240, 140, 30)
+    pdf.cell(297,10,f"Date: {date}",align="C")
+
+    pdf.image(qr_path,240,140,30)
 
     cert_path = f"{CERT_FOLDER}/{regno}_certificate.pdf"
 
@@ -109,33 +118,31 @@ def generate_certificate(name, regno, score, total):
 
     return cert_path
 
-# ----------------------------
+# -----------------------
 # STREAMLIT UI
-# ----------------------------
+# -----------------------
 
 st.title("🎓 Microlearning Platform")
 
-# ----------------------------
-# LOGIN
-# ----------------------------
-
-regno = st.text_input("Enter Register Number")
+regno = st.text_input("Enter Register Number").strip()
 
 if st.button("Login"):
 
     student = students[students["regno"] == regno]
 
     if student.empty:
+
         st.error("Invalid Register Number")
+
         st.stop()
 
     name = student.iloc[0]["name"]
 
     st.success(f"Welcome {name}")
 
-    # ----------------------------
-    # IF ALREADY COMPLETED
-    # ----------------------------
+    # -----------------------
+    # CHECK COMPLETED
+    # -----------------------
 
     if regno in progress:
 
@@ -145,7 +152,7 @@ if st.button("Login"):
 
         if os.path.exists(cert_path):
 
-            with open(cert_path, "rb") as f:
+            with open(cert_path,"rb") as f:
 
                 st.download_button(
                     "Download Certificate",
@@ -155,11 +162,11 @@ if st.button("Login"):
 
         st.stop()
 
-    # ----------------------------
+    # -----------------------
     # VIDEO
-    # ----------------------------
+    # -----------------------
 
-    st.subheader("Watch the Learning Video")
+    st.subheader("Watch Learning Video")
 
     st.video(VIDEO_URL)
 
@@ -167,9 +174,9 @@ if st.button("Login"):
 
         st.session_state.video_done = True
 
-# ----------------------------
-# QUIZ SECTION
-# ----------------------------
+# -----------------------
+# QUIZ
+# -----------------------
 
 if st.session_state.get("video_done"):
 
@@ -177,9 +184,7 @@ if st.session_state.get("video_done"):
 
     answers = {}
 
-    for i, row in quiz.iterrows():
-
-        question = row["Question"]
+    for i,row in quiz.iterrows():
 
         options = [
             row["OptionA"],
@@ -188,30 +193,31 @@ if st.session_state.get("video_done"):
             row["OptionD"]
         ]
 
-        selected = st.radio(question, options, key=i)
+        selected = st.radio(row["Question"],options,key=i)
 
         answers[i] = selected
 
     if st.button("Submit Quiz"):
 
         score = 0
+
         total = quiz["Marks"].sum()
 
-        for i, row in quiz.iterrows():
+        for i,row in quiz.iterrows():
 
-            correct = row["Answer"]
+            correct = row[f"Option{row['Answer']}"]
 
-            correct_option = row[f"Option{correct}"]
+            if answers[i] == correct:
 
-            if answers[i] == correct_option:
                 score += row["Marks"]
 
         st.success(f"Your Score: {score} / {total}")
 
         student = students[students["regno"] == regno]
+
         name = student.iloc[0]["name"]
 
-        cert_path = generate_certificate(name, regno, score, total)
+        cert_path = generate_certificate(name,regno,score,total)
 
         progress[regno] = {
             "score": score,
@@ -222,7 +228,7 @@ if st.session_state.get("video_done"):
 
         st.success("Certificate Generated Successfully")
 
-        with open(cert_path, "rb") as f:
+        with open(cert_path,"rb") as f:
 
             st.download_button(
                 "Download Certificate",
