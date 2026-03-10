@@ -11,7 +11,7 @@ from datetime import datetime
 # CONFIG
 # -----------------------
 
-VIDEO_URL = "https://www.youtube.com/watch?v=YOUR_VIDEO_ID"
+VIDEO_URL = "https://youtu.be/e-mCCdx6vjk"
 
 STUDENT_FILE = "students.xlsx"
 QUIZ_FILE = "quiz.xlsx"
