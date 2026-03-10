@@ -4,9 +4,9 @@ import json
 import os
 import uuid
 import qrcode
-import time
 from fpdf import FPDF
 from datetime import datetime
+from streamlit_autorefresh import st_autorefresh
 
 # -----------------------
 # CONFIG
@@ -22,7 +22,7 @@ CERT_FOLDER = "certificates"
 os.makedirs(CERT_FOLDER, exist_ok=True)
 
 # -----------------------
-# SESSION STATE DEFAULTS
+# SESSION STATE
 # -----------------------
 
 if "logged_in" not in st.session_state:
@@ -55,7 +55,7 @@ students["name"] = students["name"].str.strip()
 quiz = pd.read_excel(QUIZ_FILE)
 
 # -----------------------
-# LOAD PROGRESS SAFE
+# LOAD PROGRESS
 # -----------------------
 
 def load_progress():
@@ -71,17 +71,12 @@ def load_progress():
 
 progress = load_progress()
 
-# -----------------------
-# SAVE PROGRESS
-# -----------------------
-
 def save_progress():
-
-    with open(PROGRESS_FILE, "w") as f:
-        json.dump(progress, f, indent=4)
+    with open(PROGRESS_FILE,"w") as f:
+        json.dump(progress,f,indent=4)
 
 # -----------------------
-# CERTIFICATE GENERATOR
+# CERTIFICATE FUNCTION
 # -----------------------
 
 def generate_certificate(name, regno, score, total):
@@ -95,33 +90,32 @@ def generate_certificate(name, regno, score, total):
     qr_path = f"{CERT_FOLDER}/{regno}_qr.png"
     qr.save(qr_path)
 
-    pdf = FPDF('L', 'mm', 'A4')
+    pdf = FPDF('L','mm','A4')
     pdf.add_page()
 
-    # certificate background image
-    pdf.image("certificate_bg.png", 0, 0, 297, 210)
+    pdf.image("certificate_bg.png",0,0,297,210)
 
-    pdf.set_font("Arial", "B", 28)
-    pdf.set_xy(0, 90)
-    pdf.cell(297, 10, name, align="C")
+    pdf.set_font("Arial","B",28)
+    pdf.set_xy(0,90)
+    pdf.cell(297,10,name,align="C")
 
-    pdf.set_font("Arial", "", 16)
+    pdf.set_font("Arial","",16)
 
-    pdf.set_xy(0, 110)
-    pdf.cell(297, 10, f"Register Number: {regno}", align="C")
+    pdf.set_xy(0,110)
+    pdf.cell(297,10,f"Register Number: {regno}",align="C")
 
-    pdf.set_xy(0, 125)
-    pdf.cell(297, 10, f"Score: {score} / {total}", align="C")
+    pdf.set_xy(0,125)
+    pdf.cell(297,10,f"Score: {score}/{total}",align="C")
 
-    pdf.set_xy(0, 140)
-    pdf.cell(297, 10, f"Certificate ID: {cert_id}", align="C")
+    pdf.set_xy(0,140)
+    pdf.cell(297,10,f"Certificate ID: {cert_id}",align="C")
 
     date = datetime.today().strftime("%d-%m-%Y")
 
-    pdf.set_xy(0, 155)
-    pdf.cell(297, 10, f"Date: {date}", align="C")
+    pdf.set_xy(0,155)
+    pdf.cell(297,10,f"Date: {date}",align="C")
 
-    pdf.image(qr_path, 240, 140, 30)
+    pdf.image(qr_path,240,140,30)
 
     cert_path = f"{CERT_FOLDER}/{regno}_certificate.pdf"
     pdf.output(cert_path)
@@ -129,7 +123,7 @@ def generate_certificate(name, regno, score, total):
     return cert_path
 
 # -----------------------
-# STREAMLIT UI
+# TITLE
 # -----------------------
 
 st.title("🎓 Microlearning Platform")
@@ -156,6 +150,8 @@ if not st.session_state.logged_in:
             st.session_state.regno = regno
             st.session_state.name = student.iloc[0]["name"]
 
+            st.session_state.start_time = datetime.now()
+
             st.rerun()
 
 # -----------------------
@@ -170,7 +166,7 @@ if st.session_state.logged_in:
     st.success(f"Welcome {name}")
 
     # -----------------------
-    # ALREADY COMPLETED
+    # CHECK ALREADY COMPLETED
     # -----------------------
 
     if regno in progress:
@@ -181,7 +177,7 @@ if st.session_state.logged_in:
 
         if os.path.exists(cert_path):
 
-            with open(cert_path, "rb") as f:
+            with open(cert_path,"rb") as f:
 
                 st.download_button(
                     "Download Certificate",
@@ -195,33 +191,30 @@ if st.session_state.logged_in:
     # VIDEO SECTION
     # -----------------------
 
-    
-if not st.session_state.video_done:
+    if not st.session_state.video_done:
 
-    st.subheader("Watch Learning Video")
+        st.subheader("Watch Learning Video")
 
-    st.video(VIDEO_URL)
+        st.video(VIDEO_URL)
 
-    if st.session_state.start_time is None:
-        st.session_state.start_time = datetime.now()
-
-    timer_placeholder = st.empty()
-
-    while True:
+        st_autorefresh(interval=1000, key="timer")
 
         elapsed = (datetime.now() - st.session_state.start_time).seconds
-        remaining = 42 - elapsed
 
-        if remaining <= 0:
-            timer_placeholder.success("Video watch time completed")
-            break
+        remaining = 420 - elapsed
 
-        timer_placeholder.warning(f"Quiz unlocks in {remaining} seconds")
-        time.sleep(1)
+        if remaining > 0:
 
-    if st.button("Proceed to Quiz"):
-        st.session_state.video_done = True
-        st.rerun()
+            st.warning(f"Quiz unlocks in {remaining} seconds")
+
+        else:
+
+            st.success("Video watch completed")
+
+            if st.button("Proceed to Quiz"):
+
+                st.session_state.video_done = True
+                st.rerun()
 
     # -----------------------
     # QUIZ SECTION
@@ -233,7 +226,7 @@ if not st.session_state.video_done:
 
         answers = {}
 
-        for i, row in quiz.iterrows():
+        for i,row in quiz.iterrows():
 
             options = [
                 row["OptionA"],
@@ -249,17 +242,16 @@ if not st.session_state.video_done:
             score = 0
             total = quiz["Marks"].sum()
 
-            for i, row in quiz.iterrows():
+            for i,row in quiz.iterrows():
 
                 correct = row[f"Option{row['Answer']}"]
 
                 if answers[i] == correct:
-
                     score += row["Marks"]
 
-            st.success(f"Your Score: {score} / {total}")
+            st.success(f"Your Score: {score}/{total}")
 
-            cert_path = generate_certificate(name, regno, score, total)
+            cert_path = generate_certificate(name,regno,score,total)
 
             progress[regno] = {
                 "score": score,
@@ -270,7 +262,7 @@ if not st.session_state.video_done:
 
             st.success("Certificate Generated Successfully")
 
-            with open(cert_path, "rb") as f:
+            with open(cert_path,"rb") as f:
 
                 st.download_button(
                     "Download Certificate",
