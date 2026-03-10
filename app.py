@@ -18,17 +18,34 @@ QUIZ_FILE = "quiz.xlsx"
 PROGRESS_FILE = "progress.json"
 
 CERT_FOLDER = "certificates"
-
 os.makedirs(CERT_FOLDER, exist_ok=True)
+
+# -----------------------
+# SESSION STATE DEFAULTS
+# -----------------------
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "video_done" not in st.session_state:
+    st.session_state.video_done = False
+
+if "start_time" not in st.session_state:
+    st.session_state.start_time = None
+
+if "regno" not in st.session_state:
+    st.session_state.regno = ""
+
+if "name" not in st.session_state:
+    st.session_state.name = ""
 
 # -----------------------
 # LOAD STUDENTS
 # -----------------------
 
 students = pd.read_excel(STUDENT_FILE, dtype=str)
-
-students["regno"] = students["regno"].astype(str).str.strip()
-students["name"] = students["name"].astype(str).str.strip()
+students["regno"] = students["regno"].str.strip()
+students["name"] = students["name"].str.strip()
 
 # -----------------------
 # LOAD QUIZ
@@ -59,8 +76,8 @@ progress = load_progress()
 
 def save_progress():
 
-    with open(PROGRESS_FILE,"w") as f:
-        json.dump(progress,f,indent=4)
+    with open(PROGRESS_FILE, "w") as f:
+        json.dump(progress, f, indent=4)
 
 # -----------------------
 # CERTIFICATE GENERATOR
@@ -70,50 +87,42 @@ def generate_certificate(name, regno, score, total):
 
     cert_id = "ML-" + str(uuid.uuid4())[:8]
 
-    qr_text = f"Certificate ID: {cert_id}\nName:{name}\nMarks:{score}/{total}"
+    qr_text = f"Certificate ID:{cert_id}\nName:{name}\nMarks:{score}/{total}"
 
     qr = qrcode.make(qr_text)
 
     qr_path = f"{CERT_FOLDER}/{regno}_qr.png"
-
     qr.save(qr_path)
 
-    pdf = FPDF('L','mm','A4')
-
+    pdf = FPDF('L', 'mm', 'A4')
     pdf.add_page()
 
-    pdf.image("certificate_bg.png",0,0,297,210)
+    # certificate background image
+    pdf.image("certificate_bg.png", 0, 0, 297, 210)
 
-    pdf.set_font("Arial","B",28)
+    pdf.set_font("Arial", "B", 28)
+    pdf.set_xy(0, 90)
+    pdf.cell(297, 10, name, align="C")
 
-    pdf.set_xy(0,90)
+    pdf.set_font("Arial", "", 16)
 
-    pdf.cell(297,10,name,align="C")
+    pdf.set_xy(0, 110)
+    pdf.cell(297, 10, f"Register Number: {regno}", align="C")
 
-    pdf.set_font("Arial","",16)
+    pdf.set_xy(0, 125)
+    pdf.cell(297, 10, f"Score: {score} / {total}", align="C")
 
-    pdf.set_xy(0,110)
-
-    pdf.cell(297,10,f"Register Number: {regno}",align="C")
-
-    pdf.set_xy(0,125)
-
-    pdf.cell(297,10,f"Score: {score} / {total}",align="C")
-
-    pdf.set_xy(0,140)
-
-    pdf.cell(297,10,f"Certificate ID: {cert_id}",align="C")
+    pdf.set_xy(0, 140)
+    pdf.cell(297, 10, f"Certificate ID: {cert_id}", align="C")
 
     date = datetime.today().strftime("%d-%m-%Y")
 
-    pdf.set_xy(0,155)
+    pdf.set_xy(0, 155)
+    pdf.cell(297, 10, f"Date: {date}", align="C")
 
-    pdf.cell(297,10,f"Date: {date}",align="C")
-
-    pdf.image(qr_path,240,140,30)
+    pdf.image(qr_path, 240, 140, 30)
 
     cert_path = f"{CERT_FOLDER}/{regno}_certificate.pdf"
-
     pdf.output(cert_path)
 
     return cert_path
@@ -124,35 +133,54 @@ def generate_certificate(name, regno, score, total):
 
 st.title("🎓 Microlearning Platform")
 
-regno = st.text_input("Enter Register Number").strip()
+# -----------------------
+# LOGIN PAGE
+# -----------------------
 
-if st.button("Login"):
+if not st.session_state.logged_in:
 
-    student = students[students["regno"] == regno]
+    regno = st.text_input("Enter Register Number")
 
-    if student.empty:
+    if st.button("Login"):
 
-        st.error("Invalid Register Number")
+        student = students[students["regno"] == regno]
 
-        st.stop()
+        if student.empty:
 
-    name = student.iloc[0]["name"]
+            st.error("Invalid Register Number")
+
+        else:
+
+            st.session_state.logged_in = True
+            st.session_state.regno = regno
+            st.session_state.name = student.iloc[0]["name"]
+
+            st.rerun()
+
+# -----------------------
+# AFTER LOGIN
+# -----------------------
+
+if st.session_state.logged_in:
+
+    regno = st.session_state.regno
+    name = st.session_state.name
 
     st.success(f"Welcome {name}")
 
     # -----------------------
-    # CHECK COMPLETED
+    # ALREADY COMPLETED
     # -----------------------
 
     if regno in progress:
 
-        st.success("You have already completed this module")
+        st.success("You already completed this module")
 
         cert_path = progress[regno]["certificate"]
 
         if os.path.exists(cert_path):
 
-            with open(cert_path,"rb") as f:
+            with open(cert_path, "rb") as f:
 
                 st.download_button(
                     "Download Certificate",
@@ -163,94 +191,86 @@ if st.button("Login"):
         st.stop()
 
     # -----------------------
-    # VIDEO
+    # VIDEO SECTION
     # -----------------------
 
-   # -----------------------
-# VIDEO SECTION WITH TIMER
-# -----------------------
+    if not st.session_state.video_done:
 
-if not st.session_state.video_done:
+        st.subheader("Watch Learning Video")
 
-    st.subheader("Watch Learning Video")
+        st.video(VIDEO_URL)
 
-    st.video(VIDEO_URL)
+        if st.session_state.start_time is None:
+            st.session_state.start_time = datetime.now()
 
-    # start timer
-    if "start_time" not in st.session_state:
-        st.session_state.start_time = datetime.now()
+        elapsed = (datetime.now() - st.session_state.start_time).seconds
 
-    elapsed = (datetime.now() - st.session_state.start_time).seconds
+        remaining = 420 - elapsed
 
-    remaining = 420 - elapsed   # 7 minutes
+        if remaining > 0:
 
-    if remaining > 0:
-        st.warning(f"Please watch the video. Quiz unlocks in {remaining} seconds.")
-    else:
-        st.success("Video watch time completed")
+            st.warning(f"Quiz unlocks in {remaining} seconds")
 
-        if st.button("Proceed to Quiz"):
-            st.session_state.video_done = True
-            st.rerun()
+        else:
 
-# -----------------------
-# QUIZ
-# -----------------------
+            st.success("Video watch time completed")
 
-if st.session_state.get("video_done"):
+            if st.button("Proceed to Quiz"):
 
-    st.subheader("Quiz")
+                st.session_state.video_done = True
+                st.rerun()
 
-    answers = {}
+    # -----------------------
+    # QUIZ SECTION
+    # -----------------------
 
-    for i,row in quiz.iterrows():
+    if st.session_state.video_done:
 
-        options = [
-            row["OptionA"],
-            row["OptionB"],
-            row["OptionC"],
-            row["OptionD"]
-        ]
+        st.subheader("Quiz")
 
-        selected = st.radio(row["Question"],options,key=i)
+        answers = {}
 
-        answers[i] = selected
+        for i, row in quiz.iterrows():
 
-    if st.button("Submit Quiz"):
+            options = [
+                row["OptionA"],
+                row["OptionB"],
+                row["OptionC"],
+                row["OptionD"]
+            ]
 
-        score = 0
+            answers[i] = st.radio(row["Question"], options, key=i)
 
-        total = quiz["Marks"].sum()
+        if st.button("Submit Quiz"):
 
-        for i,row in quiz.iterrows():
+            score = 0
+            total = quiz["Marks"].sum()
 
-            correct = row[f"Option{row['Answer']}"]
+            for i, row in quiz.iterrows():
 
-            if answers[i] == correct:
+                correct = row[f"Option{row['Answer']}"]
 
-                score += row["Marks"]
+                if answers[i] == correct:
 
-        st.success(f"Your Score: {score} / {total}")
+                    score += row["Marks"]
 
-        student = students[students["regno"] == regno]
+            st.success(f"Your Score: {score} / {total}")
 
-        name = student.iloc[0]["name"]
+            cert_path = generate_certificate(name, regno, score, total)
 
-        cert_path = generate_certificate(name,regno,score,total)
+            progress[regno] = {
+                "score": score,
+                "certificate": cert_path
+            }
 
-        progress[regno] = {
-            "score": score,
-            "certificate": cert_path
-        }
+            save_progress()
 
-        save_progress()
+            st.success("Certificate Generated Successfully")
 
-        st.success("Certificate Generated Successfully")
+            with open(cert_path, "rb") as f:
 
-        with open(cert_path,"rb") as f:
-
-            st.download_button(
-                "Download Certificate",
-                f,
-                file_name="certificate.pdf"
-            )
+                st.download_button(
+                    "Download Certificate",
+                    f,
+                    file_name="certificate.pdf"
+                )
