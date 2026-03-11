@@ -8,24 +8,23 @@ from fpdf import FPDF
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 
-# --------------------------------
-# CONFIGURATION
-# --------------------------------
+# -----------------------------
+# CONFIG
+# -----------------------------
 
 VIDEO_URL = "https://youtu.be/e-mCCdx6vjk"
+VIDEO_TIME = 42
 
 STUDENT_FILE = "students.xlsx"
 QUIZ_FILE = "quiz.xlsx"
 PROGRESS_FILE = "progress.json"
 
-VIDEO_TIME = 40   # 7 minutes
-
 CERT_FOLDER = "certificates"
 os.makedirs(CERT_FOLDER, exist_ok=True)
 
-# --------------------------------
-# SESSION STATE INIT
-# --------------------------------
+# -----------------------------
+# SESSION STATE
+# -----------------------------
 
 defaults = {
     "logged_in": False,
@@ -39,37 +38,47 @@ for k,v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# --------------------------------
+# -----------------------------
 # LOAD STUDENTS
-# --------------------------------
+# -----------------------------
 
 try:
+
     students = pd.read_excel(STUDENT_FILE, dtype=str)
     students.columns = students.columns.str.strip()
 
     students["regno"] = students["regno"].astype(str).str.replace(".0","").str.strip()
     students["name"] = students["name"].astype(str).str.strip()
 
-except Exception as e:
+except:
     st.error("Error loading students.xlsx")
     st.stop()
 
-# --------------------------------
+# -----------------------------
 # LOAD QUIZ
-# --------------------------------
+# -----------------------------
 
 try:
+
     quiz = pd.read_excel(QUIZ_FILE)
     quiz.columns = quiz.columns.str.strip()
-    quiz = quiz.fillna("")      # prevent NaN issue
+
+    quiz = quiz.fillna("")
+
+    quiz = quiz.rename(columns={
+        "OptionA":"Option A",
+        "OptionB":"Option B",
+        "OptionC":"Option C",
+        "OptionD":"Option D"
+    })
 
 except:
     st.error("Error loading quiz.xlsx")
     st.stop()
 
-# --------------------------------
+# -----------------------------
 # LOAD PROGRESS
-# --------------------------------
+# -----------------------------
 
 def load_progress():
 
@@ -77,7 +86,7 @@ def load_progress():
         return {}
 
     try:
-        with open(PROGRESS_FILE,"r") as f:
+        with open(PROGRESS_FILE) as f:
             return json.load(f)
     except:
         return {}
@@ -89,9 +98,9 @@ def save_progress():
     with open(PROGRESS_FILE,"w") as f:
         json.dump(progress,f,indent=4)
 
-# --------------------------------
-# CERTIFICATE GENERATION
-# --------------------------------
+# -----------------------------
+# CERTIFICATE GENERATOR
+# -----------------------------
 
 def generate_certificate(name, regno, score, total):
 
@@ -142,15 +151,15 @@ Marks: {score}/{total}
 
     return cert_path
 
-# --------------------------------
-# UI TITLE
-# --------------------------------
+# -----------------------------
+# UI
+# -----------------------------
 
 st.title("🎓 Microlearning Platform")
 
-# --------------------------------
-# LOGIN PAGE
-# --------------------------------
+# -----------------------------
+# LOGIN
+# -----------------------------
 
 if not st.session_state.logged_in:
 
@@ -174,9 +183,9 @@ if not st.session_state.logged_in:
 
             st.rerun()
 
-# --------------------------------
+# -----------------------------
 # AFTER LOGIN
-# --------------------------------
+# -----------------------------
 
 if st.session_state.logged_in:
 
@@ -185,9 +194,9 @@ if st.session_state.logged_in:
 
     st.success(f"Welcome {name}")
 
-# --------------------------------
+# -----------------------------
 # CHECK COMPLETION
-# --------------------------------
+# -----------------------------
 
     if regno in progress:
 
@@ -207,9 +216,9 @@ if st.session_state.logged_in:
 
         st.stop()
 
-# --------------------------------
-# VIDEO SECTION
-# --------------------------------
+# -----------------------------
+# VIDEO
+# -----------------------------
 
     if not st.session_state.video_done:
 
@@ -236,9 +245,9 @@ if st.session_state.logged_in:
                 st.session_state.video_done = True
                 st.rerun()
 
-# --------------------------------
-# QUIZ SECTION
-# --------------------------------
+# -----------------------------
+# QUIZ
+# -----------------------------
 
     if st.session_state.video_done:
 
@@ -255,11 +264,7 @@ if st.session_state.logged_in:
                 row["Option D"]
             ]
 
-            answers[i] = st.radio(
-                row["Question"],
-                options,
-                key=f"q{i}"
-            )
+            answers[i] = st.radio(row["Question"], options, key=f"q{i}")
 
         if st.button("Submit Quiz"):
 
@@ -270,10 +275,21 @@ if st.session_state.logged_in:
 
                 ans = str(row["Answer"]).strip().upper()
 
-                correct = row[f"Option {ans}"]
+                option_map = {
+                    "A":"Option A",
+                    "B":"Option B",
+                    "C":"Option C",
+                    "D":"Option D"
+                }
 
-                if answers[i] == correct:
-                    score += 1
+                col = option_map.get(ans)
+
+                if col in row:
+
+                    correct = row[col]
+
+                    if answers[i] == correct:
+                        score += 1
 
             st.success(f"Your Score : {score}/{total}")
 
