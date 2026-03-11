@@ -126,13 +126,9 @@ Marks: {score}/50
     pdf.image("certificate_bg.png",0,0,297,210)
 
     pdf.set_font("Arial","B",22)
-    pdf.set_xy(0,98)
-    pdf.cell(297,10,name,align="C")
-
-    pdf.set_font("Arial","",18)
-    pdf.set_xy(0,105)
-    pdf.cell(297,10,f"{regno}",align="C")
-    
+    pdf.set_xy(0,103)
+    pdf.cell(297,10,f"{name} - {regno},align="C")
+        
     pdf.set_xy(0,112)
     pdf.cell(297,10,f"{year} - {dept} - {section}",align="C")
 
