@@ -13,7 +13,7 @@ from streamlit_autorefresh import st_autorefresh
 # -----------------------------
 
 VIDEO_URL = "https://youtu.be/e-mCCdx6vjk"
-VIDEO_TIME = 42
+VIDEO_TIME = 420
 
 STUDENT_FILE = "students.xlsx"
 QUIZ_FILE = "quiz.xlsx"
@@ -31,7 +31,10 @@ defaults = {
     "video_done": False,
     "start_time": None,
     "regno": "",
-    "name": ""
+    "name": "",
+    "year": "",
+    "dept": "",
+    "section": ""
 }
 
 for k,v in defaults.items():
@@ -62,7 +65,6 @@ try:
 
     quiz = pd.read_excel(QUIZ_FILE)
     quiz.columns = quiz.columns.str.strip()
-
     quiz = quiz.fillna("")
 
     quiz = quiz.rename(columns={
@@ -99,10 +101,10 @@ def save_progress():
         json.dump(progress,f,indent=4)
 
 # -----------------------------
-# CERTIFICATE GENERATOR
+# CERTIFICATE GENERATION
 # -----------------------------
 
-def generate_certificate(name, regno, score, total):
+def generate_certificate(name, regno, year, dept, section, score):
 
     cert_id = "ML-" + str(uuid.uuid4())[:8]
 
@@ -110,7 +112,7 @@ def generate_certificate(name, regno, score, total):
 Certificate ID: {cert_id}
 Name: {name}
 Register No: {regno}
-Marks: {score}/{total}
+Marks: {score}/50
 """
 
     qr = qrcode.make(qr_text)
@@ -124,29 +126,31 @@ Marks: {score}/{total}
     pdf.image("certificate_bg.png",0,0,297,210)
 
     pdf.set_font("Arial","B",28)
-    pdf.set_xy(0,100)
+    pdf.set_xy(0,85)
     pdf.cell(297,10,name,align="C")
 
-    pdf.set_font("Arial","",16)
+    pdf.set_font("Arial","",18)
 
-    pdf.set_xy(0,110)
-    pdf.cell(297,10,f" : {regno}",align="C")
+    pdf.set_xy(0,105)
+    pdf.cell(297,10,f"{year} - {dept} - {section} Section",align="C")
 
-    pdf.set_xy(150,125)
-    pdf.cell(297,10,f"Score : {score}/{total}",align="C")
+    pdf.set_xy(0,120)
+    pdf.cell(297,10,f"Register Number : {regno}",align="C")
 
-    pdf.set_xy(0,165)
+    pdf.set_xy(0,135)
+    pdf.cell(297,10,f"Final Score : {score}/50",align="C")
+
+    pdf.set_xy(0,150)
     pdf.cell(297,10,f"Certificate ID : {cert_id}",align="C")
 
     date = datetime.today().strftime("%d-%m-%Y")
 
-    pdf.set_xy(0,175)
+    pdf.set_xy(0,165)
     pdf.cell(297,10,f"Date : {date}",align="C")
 
     pdf.image(qr_path,240,140,30)
 
     cert_path = f"{CERT_FOLDER}/{regno}_certificate.pdf"
-
     pdf.output(cert_path)
 
     return cert_path
@@ -172,6 +176,7 @@ if not st.session_state.logged_in:
         student = students[students["regno"] == regno]
 
         if student.empty:
+
             st.error("Invalid Register Number")
 
         else:
@@ -179,6 +184,10 @@ if not st.session_state.logged_in:
             st.session_state.logged_in = True
             st.session_state.regno = regno
             st.session_state.name = student.iloc[0]["name"]
+            st.session_state.year = student.iloc[0]["year"]
+            st.session_state.dept = student.iloc[0]["dept"]
+            st.session_state.section = student.iloc[0]["section"]
+
             st.session_state.start_time = datetime.now()
 
             st.rerun()
@@ -191,6 +200,9 @@ if st.session_state.logged_in:
 
     regno = st.session_state.regno
     name = st.session_state.name
+    year = st.session_state.year
+    dept = st.session_state.dept
+    section = st.session_state.section
 
     st.success(f"Welcome {name}")
 
@@ -238,7 +250,7 @@ if st.session_state.logged_in:
 
         else:
 
-            st.success("Video completed")
+            st.success("Video completed (20 Marks Awarded)")
 
             if st.button("Proceed to Quiz"):
 
@@ -268,8 +280,7 @@ if st.session_state.logged_in:
 
         if st.button("Submit Quiz"):
 
-            score = 0
-            total = len(quiz)
+            correct_answers = 0
 
             for i,row in quiz.iterrows():
 
@@ -289,14 +300,27 @@ if st.session_state.logged_in:
                     correct = row[col]
 
                     if answers[i] == correct:
-                        score += 1
+                        correct_answers += 1
 
-            st.success(f"Your Score : {score}/{total}")
+            quiz_marks = correct_answers * 3
+            video_marks = 20
+            final_marks = quiz_marks + video_marks
 
-            cert_path = generate_certificate(name,regno,score,total)
+            st.success(f"Quiz Marks : {quiz_marks}/30")
+            st.success(f"Video Marks : {video_marks}/20")
+            st.success(f"Final Score : {final_marks}/50")
+
+            cert_path = generate_certificate(
+                name,
+                regno,
+                year,
+                dept,
+                section,
+                final_marks
+            )
 
             progress[regno] = {
-                "score": score,
+                "score": final_marks,
                 "certificate": cert_path
             }
 
