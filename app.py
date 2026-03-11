@@ -124,23 +124,23 @@ Marks: {score}/{total}
     pdf.image("certificate_bg.png",0,0,297,210)
 
     pdf.set_font("Arial","B",28)
-    pdf.set_xy(0,90)
+    pdf.set_xy(0,100)
     pdf.cell(297,10,name,align="C")
 
     pdf.set_font("Arial","",16)
 
     pdf.set_xy(0,110)
-    pdf.cell(297,10,f"Register Number : {regno}",align="C")
+    pdf.cell(297,10,f" : {regno}",align="C")
 
-    pdf.set_xy(0,125)
+    pdf.set_xy(150,125)
     pdf.cell(297,10,f"Score : {score}/{total}",align="C")
 
-    pdf.set_xy(0,140)
+    pdf.set_xy(0,165)
     pdf.cell(297,10,f"Certificate ID : {cert_id}",align="C")
 
     date = datetime.today().strftime("%d-%m-%Y")
 
-    pdf.set_xy(0,155)
+    pdf.set_xy(0,175)
     pdf.cell(297,10,f"Date : {date}",align="C")
 
     pdf.image(qr_path,240,140,30)
