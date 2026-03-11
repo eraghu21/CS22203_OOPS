@@ -139,14 +139,14 @@ Marks: {score}/50
     
 
     pdf.set_xy(110,110)
-    pdf.cell(297,10,f" : {score}/50",align="C")
+    pdf.cell(297,10,f" {score}/50",align="C")
 
-    pdf.set_xy(0,170)
+    pdf.set_xy(0,165)
     pdf.cell(297,10,f"Certificate ID : {cert_id}",align="C")
 
     date = datetime.today().strftime("%d-%m-%Y")
 
-    pdf.set_xy(0,180)
+    pdf.set_xy(0,175)
     pdf.cell(297,10,f"Date : {date}",align="C")
 
     pdf.image(qr_path,240,140,30)
