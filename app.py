@@ -127,7 +127,7 @@ Marks: {score}/50
 
     pdf.set_font("Arial","B",22)
     pdf.set_xy(0,103)
-    pdf.cell(297,10,f"{name} - {regno},align="C")
+    pdf.cell(297,10,f"{name} - {regno}",align="C")
         
     pdf.set_xy(0,112)
     pdf.cell(297,10,f"{year} - {dept} - {section}",align="C")
