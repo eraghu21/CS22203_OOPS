@@ -220,7 +220,7 @@ if st.session_state.logged_in:
                 st.download_button(
                     "Download Certificate",
                     f,
-                    file_name="certificate.pdf"
+                    file_name=f"{regno}_certificate.pdf"
                 )
 
         st.stop()
