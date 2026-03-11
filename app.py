@@ -133,10 +133,10 @@ Marks: {score}/50
     pdf.cell(297,10,f"{year} - {dept} - {section}",align="C")
 
     
-
+   
     pdf.set_xy(110,110)
     pdf.cell(297,10,f"Score: {score}/50",align="C")
-
+    pdf.set_font("Arial","B",18)
     pdf.set_xy(0,165)
     pdf.cell(297,10,f"Certificate ID : {cert_id}",align="C")
 
