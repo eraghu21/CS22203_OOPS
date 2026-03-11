@@ -159,7 +159,7 @@ Marks: {score}/50
 # UI
 # -----------------------------
 
-st.title("🎓 Microlearning Platform")
+st.title("CS22203 Microlearning & Quiz Portal")
 
 # -----------------------------
 # LOGIN
