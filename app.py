@@ -18,7 +18,7 @@ STUDENT_FILE = "students.xlsx"
 QUIZ_FILE = "quiz.xlsx"
 PROGRESS_FILE = "progress.json"
 
-VIDEO_TIME = 420   # 7 minutes
+VIDEO_TIME = 40   # 7 minutes
 
 CERT_FOLDER = "certificates"
 os.makedirs(CERT_FOLDER, exist_ok=True)
