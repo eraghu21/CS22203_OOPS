@@ -13,7 +13,7 @@ from streamlit_autorefresh import st_autorefresh
 # -----------------------------
 
 VIDEO_URL = "https://youtu.be/e-mCCdx6vjk"
-VIDEO_TIME = 420
+VIDEO_TIME = 42
 
 STUDENT_FILE = "students.xlsx"
 QUIZ_FILE = "quiz.xlsx"
