@@ -8,9 +8,9 @@ from fpdf import FPDF
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 
-# -----------------------
-# CONFIG
-# -----------------------
+# --------------------------------
+# CONFIGURATION
+# --------------------------------
 
 VIDEO_URL = "https://youtu.be/e-mCCdx6vjk"
 
@@ -18,31 +18,30 @@ STUDENT_FILE = "students.xlsx"
 QUIZ_FILE = "quiz.xlsx"
 PROGRESS_FILE = "progress.json"
 
+VIDEO_TIME = 420   # 7 minutes
+
 CERT_FOLDER = "certificates"
 os.makedirs(CERT_FOLDER, exist_ok=True)
 
-# -----------------------
-# SESSION STATE
-# -----------------------
+# --------------------------------
+# SESSION STATE INIT
+# --------------------------------
 
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+defaults = {
+    "logged_in": False,
+    "video_done": False,
+    "start_time": None,
+    "regno": "",
+    "name": ""
+}
 
-if "video_done" not in st.session_state:
-    st.session_state.video_done = False
+for k,v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
-if "start_time" not in st.session_state:
-    st.session_state.start_time = None
-
-if "regno" not in st.session_state:
-    st.session_state.regno = ""
-
-if "name" not in st.session_state:
-    st.session_state.name = ""
-
-# -----------------------
+# --------------------------------
 # LOAD STUDENTS
-# -----------------------
+# --------------------------------
 
 try:
     students = pd.read_excel(STUDENT_FILE, dtype=str)
@@ -51,26 +50,26 @@ try:
     students["regno"] = students["regno"].astype(str).str.replace(".0","").str.strip()
     students["name"] = students["name"].astype(str).str.strip()
 
-    students = students.dropna()
-
-except:
-    st.error("Error loading students file")
+except Exception as e:
+    st.error("Error loading students.xlsx")
     st.stop()
 
-# -----------------------
+# --------------------------------
 # LOAD QUIZ
-# -----------------------
+# --------------------------------
 
 try:
     quiz = pd.read_excel(QUIZ_FILE)
     quiz.columns = quiz.columns.str.strip()
+    quiz = quiz.fillna("")      # prevent NaN issue
+
 except:
-    st.error("Error loading quiz file")
+    st.error("Error loading quiz.xlsx")
     st.stop()
 
-# -----------------------
+# --------------------------------
 # LOAD PROGRESS
-# -----------------------
+# --------------------------------
 
 def load_progress():
 
@@ -78,7 +77,7 @@ def load_progress():
         return {}
 
     try:
-        with open(PROGRESS_FILE) as f:
+        with open(PROGRESS_FILE,"r") as f:
             return json.load(f)
     except:
         return {}
@@ -90,15 +89,20 @@ def save_progress():
     with open(PROGRESS_FILE,"w") as f:
         json.dump(progress,f,indent=4)
 
-# -----------------------
-# CERTIFICATE
-# -----------------------
+# --------------------------------
+# CERTIFICATE GENERATION
+# --------------------------------
 
 def generate_certificate(name, regno, score, total):
 
     cert_id = "ML-" + str(uuid.uuid4())[:8]
 
-    qr_text = f"Certificate ID:{cert_id}\nName:{name}\nMarks:{score}/{total}"
+    qr_text = f"""
+Certificate ID: {cert_id}
+Name: {name}
+Register No: {regno}
+Marks: {score}/{total}
+"""
 
     qr = qrcode.make(qr_text)
 
@@ -117,41 +121,44 @@ def generate_certificate(name, regno, score, total):
     pdf.set_font("Arial","",16)
 
     pdf.set_xy(0,110)
-    pdf.cell(297,10,f"Register Number: {regno}",align="C")
+    pdf.cell(297,10,f"Register Number : {regno}",align="C")
 
     pdf.set_xy(0,125)
-    pdf.cell(297,10,f"Score: {score}/{total}",align="C")
+    pdf.cell(297,10,f"Score : {score}/{total}",align="C")
 
     pdf.set_xy(0,140)
-    pdf.cell(297,10,f"Certificate ID: {cert_id}",align="C")
+    pdf.cell(297,10,f"Certificate ID : {cert_id}",align="C")
 
     date = datetime.today().strftime("%d-%m-%Y")
 
     pdf.set_xy(0,155)
-    pdf.cell(297,10,f"Date: {date}",align="C")
+    pdf.cell(297,10,f"Date : {date}",align="C")
 
     pdf.image(qr_path,240,140,30)
 
     cert_path = f"{CERT_FOLDER}/{regno}_certificate.pdf"
+
     pdf.output(cert_path)
 
     return cert_path
 
-# -----------------------
-# UI
-# -----------------------
+# --------------------------------
+# UI TITLE
+# --------------------------------
 
 st.title("🎓 Microlearning Platform")
 
-# -----------------------
-# LOGIN
-# -----------------------
+# --------------------------------
+# LOGIN PAGE
+# --------------------------------
 
 if not st.session_state.logged_in:
 
     regno = st.text_input("Enter Register Number")
 
     if st.button("Login"):
+
+        regno = regno.strip()
 
         student = students[students["regno"] == regno]
 
@@ -163,14 +170,13 @@ if not st.session_state.logged_in:
             st.session_state.logged_in = True
             st.session_state.regno = regno
             st.session_state.name = student.iloc[0]["name"]
-
             st.session_state.start_time = datetime.now()
 
             st.rerun()
 
-# -----------------------
+# --------------------------------
 # AFTER LOGIN
-# -----------------------
+# --------------------------------
 
 if st.session_state.logged_in:
 
@@ -179,7 +185,10 @@ if st.session_state.logged_in:
 
     st.success(f"Welcome {name}")
 
-    # If already completed
+# --------------------------------
+# CHECK COMPLETION
+# --------------------------------
+
     if regno in progress:
 
         st.success("You already completed this module")
@@ -198,9 +207,9 @@ if st.session_state.logged_in:
 
         st.stop()
 
-    # -----------------------
-    # VIDEO
-    # -----------------------
+# --------------------------------
+# VIDEO SECTION
+# --------------------------------
 
     if not st.session_state.video_done:
 
@@ -212,7 +221,7 @@ if st.session_state.logged_in:
 
         elapsed = (datetime.now() - st.session_state.start_time).seconds
 
-        remaining = 90 - elapsed
+        remaining = VIDEO_TIME - elapsed
 
         if remaining > 0:
 
@@ -220,16 +229,16 @@ if st.session_state.logged_in:
 
         else:
 
-            st.success("Video watch completed")
+            st.success("Video completed")
 
             if st.button("Proceed to Quiz"):
 
                 st.session_state.video_done = True
                 st.rerun()
 
-    # -----------------------
-    # QUIZ
-    # -----------------------
+# --------------------------------
+# QUIZ SECTION
+# --------------------------------
 
     if st.session_state.video_done:
 
@@ -246,7 +255,11 @@ if st.session_state.logged_in:
                 row["Option D"]
             ]
 
-            answers[i] = st.radio(row["Question"],options,key=i)
+            answers[i] = st.radio(
+                row["Question"],
+                options,
+                key=f"q{i}"
+            )
 
         if st.button("Submit Quiz"):
 
@@ -257,16 +270,12 @@ if st.session_state.logged_in:
 
                 ans = str(row["Answer"]).strip().upper()
 
-                try:
-                    correct = row[f"Option {ans}"]
-                except:
-                    st.error(f"Quiz format error in row {i+1}")
-                    continue
+                correct = row[f"Option {ans}"]
 
                 if answers[i] == correct:
                     score += 1
 
-            st.success(f"Your Score: {score}/{total}")
+            st.success(f"Your Score : {score}/{total}")
 
             cert_path = generate_certificate(name,regno,score,total)
 
